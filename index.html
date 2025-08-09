@@ -696,6 +696,10 @@
                     <input type="url" id="productImage" placeholder="https://ejemplo.com/imagen.jpg">
                 </div>
                 <div class="form-group">
+                    <label>O subir imagen desde tu equipo:</label>
+                    <input type="file" id="productImageFile" accept="image/*">
+                </div>
+                <div class="form-group">
                     <label>Categoría:</label>
                     <input type="text" id="productCategory" required>
                 </div>
@@ -764,6 +768,10 @@
                     <input type="url" id="editProductImage">
                 </div>
                 <div class="form-group">
+                    <label>O subir imagen desde tu equipo:</label>
+                    <input type="file" id="editProductImageFile" accept="image/*">
+                </div>
+                <div class="form-group">
                     <label>Categoría:</label>
                     <input type="text" id="editProductCategory" required>
                 </div>
@@ -774,29 +782,48 @@
     </div>
 
     <!-- Modal de login admin -->
-    <div class="admin-login-modal" id="adminLoginModal">
-        <div class="admin-login-content">
+    <div class="modal" id="adminLoginModal">
+        <div class="modal-content" style="max-width:350px;">
             <button class="close-btn" onclick="closeAdminLogin()">&times;</button>
-            <h3>🔑 Acceso Admin</h3>
+            <h3>🔒 Acceso Administrador</h3>
             <form id="adminLoginForm">
                 <div class="form-group">
                     <label>Usuario:</label>
-                    <input type="text" id="adminUser" required>
+                    <input type="text" id="adminUser" required autocomplete="username">
                 </div>
                 <div class="form-group">
                     <label>Contraseña:</label>
-                    <input type="password" id="adminPass" required>
+                    <input type="password" id="adminPass" required autocomplete="current-password">
                 </div>
-                <div class="admin-login-error" id="adminLoginError">
-                    Credenciales incorrectas. Intenta de nuevo.
-                </div>
-                <button type="submit" class="admin-login-btn">Entrar como Admin</button>
+                <button type="submit" class="btn-primary">Ingresar</button>
             </form>
+            <div id="adminLoginError" style="color:#c0392b; margin-top:10px; display:none;">Usuario o clave incorrectos</div>
         </div>
     </div>
 
     <script>
-        // Datos de ejemplo
+        // --- LOCALSTORAGE ---
+        function saveProductsToStorage() {
+            localStorage.setItem('trendyale_products', JSON.stringify(products));
+        }
+        function loadProductsFromStorage() {
+            const data = localStorage.getItem('trendyale_products');
+            if (data) {
+                products = JSON.parse(data);
+            }
+        }
+        function saveWhatsappToStorage() {
+            localStorage.setItem('trendyale_whatsapp', whatsappNumber);
+        }
+        function loadWhatsappFromStorage() {
+            const data = localStorage.getItem('trendyale_whatsapp');
+            if (data) {
+                whatsappNumber = data;
+                document.getElementById('whatsappNumber').value = whatsappNumber;
+            }
+        }
+
+        // --- DATOS INICIALES ---
         let products = [
             {
                 id: 1,
@@ -864,16 +891,23 @@
         let cart = [];
         let whatsappNumber = '573203276886'; // Número actualizado
 
+        // Cambia el botón Admin por "Salir Admin" si está activo
+        function updateAdminButton() {
+            const btn = document.querySelector('.admin-btn');
+            btn.textContent = isAdminMode ? "🚪 Salir Admin" : "👨‍💼 Admin";
+        }
+
         function toggleAdminMode() {
             if (!isAdminMode) {
                 // Mostrar modal de login
                 document.getElementById('adminLoginModal').classList.add('active');
-                document.getElementById('adminUser').focus();
+                setTimeout(() => document.getElementById('adminUser').focus(), 100);
             } else {
                 // Salir del modo admin
                 isAdminMode = false;
                 document.getElementById('adminPanel').classList.remove('active');
                 document.body.classList.remove('admin-mode');
+                updateAdminButton();
                 renderProducts();
             }
         }
@@ -969,9 +1003,11 @@
             editingProductId = null;
         }
 
+        // --- ELIMINAR PRODUCTO ---
         function deleteProduct() {
             if (editingProductId && confirm('¿Estás seguro de que quieres eliminar este producto?')) {
                 products = products.filter(p => p.id !== editingProductId);
+                saveProductsToStorage();
                 closeEditModal();
                 renderProducts();
                 renderPagination();
@@ -1117,46 +1153,89 @@
         // Event Listeners
         document.getElementById('productForm').addEventListener('submit', function(e) {
             e.preventDefault();
-            
+            let imageUrl = document.getElementById('productImage').value;
+            if (uploadedImageBase64) {
+                imageUrl = uploadedImageBase64;
+            } else if (!imageUrl) {
+                imageUrl = 'https://via.placeholder.com/280x250/f0f0f0/999?text=Nueva+Imagen';
+            }
             const newProduct = {
                 id: Date.now(),
                 name: document.getElementById('productName').value,
                 price: parseFloat(document.getElementById('productPrice').value),
-                image: document.getElementById('productImage').value || 'https://via.placeholder.com/280x250/f0f0f0/999?text=Nueva+Imagen',
+                image: imageUrl,
                 category: document.getElementById('productCategory').value.toLowerCase()
             };
-            
             products.push(newProduct);
-            
-            // Limpiar formulario
+            saveProductsToStorage();
             this.reset();
-            
+            uploadedImageBase64 = "";
             renderProducts();
             renderPagination();
         });
 
         document.getElementById('editForm').addEventListener('submit', function(e) {
             e.preventDefault();
-            
             const productIndex = products.findIndex(p => p.id === editingProductId);
             if (productIndex !== -1) {
+                let imageUrl = document.getElementById('editProductImage').value;
+                if (editUploadedImageBase64) {
+                    imageUrl = editUploadedImageBase64;
+                }
                 products[productIndex] = {
                     ...products[productIndex],
                     name: document.getElementById('editProductName').value,
                     price: parseFloat(document.getElementById('editProductPrice').value),
-                    image: document.getElementById('editProductImage').value,
+                    image: imageUrl,
                     category: document.getElementById('editProductCategory').value.toLowerCase()
                 };
-                
+                saveProductsToStorage();
                 closeEditModal();
                 renderProducts();
                 renderPagination();
+                editUploadedImageBase64 = "";
+                document.getElementById('editProductImageFile').value = "";
             }
         });
 
-        // Actualizar número de WhatsApp
+        // --- SUBIR IMAGEN DESDE ARCHIVO ---
+        let uploadedImageBase64 = "";
+        document.getElementById('productImageFile').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (!file) {
+                uploadedImageBase64 = "";
+                return;
+            }
+            const reader = new FileReader();
+            reader.onload = function(evt) {
+                uploadedImageBase64 = evt.target.result;
+            };
+            reader.readAsDataURL(file);
+        });
+
+        // --- SUBIR IMAGEN DESDE ARCHIVO AL EDITAR ---
+        let editUploadedImageBase64 = "";
+        document.getElementById('editProductImageFile').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (!file) {
+                editUploadedImageBase64 = "";
+                return;
+            }
+            const reader = new FileReader();
+            reader.onload = function(evt) {
+                editUploadedImageBase64 = evt.target.result;
+            };
+            reader.readAsDataURL(file);
+        });
+
+        // --- CARGA INICIAL DESDE STORAGE ---
+        loadProductsFromStorage();
+        loadWhatsappFromStorage();
+
+        // --- ACTUALIZAR WHATSAPP ---
         document.getElementById('whatsappNumber').addEventListener('change', function(e) {
             whatsappNumber = e.target.value;
+            saveWhatsappToStorage();
         });
 
         // Cerrar modales al hacer clic fuera
@@ -1172,7 +1251,7 @@
             }
         });
 
-        function closeAdminLogin() {
+        closeAdminLogin = () => {
             document.getElementById('adminLoginModal').classList.remove('active');
             document.getElementById('adminLoginError').style.display = 'none';
             document.getElementById('adminLoginForm').reset();
@@ -1184,12 +1263,13 @@
             const user = document.getElementById('adminUser').value.trim();
             const pass = document.getElementById('adminPass').value.trim();
             // Cambia estos valores si quieres otros datos de acceso
-            if (user === 'admin' && pass === '5550142') {
+            if (user === 'admin' && pass === '555014') {
                 isAdminMode = true;
                 document.getElementById('adminPanel').classList.add('active');
                 document.body.classList.add('admin-mode');
                 document.getElementById('adminLoginModal').classList.remove('active');
                 document.getElementById('adminLoginError').style.display = 'none';
+                updateAdminButton();
                 renderProducts();
             } else {
                 document.getElementById('adminLoginError').style.display = 'block';
@@ -1199,6 +1279,7 @@
         // Inicializar la página
         renderProducts();
         renderPagination();
+        updateAdminButton();
     </script>
 </body>
 </html>
