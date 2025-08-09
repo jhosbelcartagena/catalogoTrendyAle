@@ -566,6 +566,87 @@
                 padding-bottom: 10px;
             }
         }
+
+        /* Estilos para el modal de login admin */
+        .admin-login-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.8);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 3000;
+        }
+
+        .admin-login-modal.active {
+            display: flex;
+        }
+
+        .admin-login-content {
+            background: white;
+            padding: 2rem;
+            border-radius: 8px;
+            max-width: 400px;
+            width: 90%;
+            text-align: center;
+            border: 1px solid #bdc3c7;
+        }
+
+        .admin-login-content h3 {
+            margin-bottom: 1.5rem;
+            color: #2c3e50;
+        }
+
+        .admin-login-content label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: bold;
+            color: #2c3e50;
+            text-align: left;
+        }
+
+        .admin-login-content input {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #bdc3c7;
+            border-radius: 4px;
+            font-size: 1rem;
+            transition: border-color 0.3s ease;
+            font-family: 'Georgia', serif;
+            margin-bottom: 1rem;
+        }
+
+        .admin-login-content input:focus {
+            outline: none;
+            border-color: #2c3e50;
+        }
+
+        .admin-login-error {
+            color: #c0392b;
+            display: none;
+            margin-bottom: 1rem;
+            font-weight: bold;
+        }
+
+        .admin-login-btn {
+            background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+            width: 100%;
+            transition: transform 0.3s ease;
+            font-family: 'Georgia', serif;
+        }
+
+        .admin-login-btn:hover {
+            transform: translateY(-2px);
+        }
     </style>
 </head>
 <body>
@@ -692,6 +773,28 @@
         </div>
     </div>
 
+    <!-- Modal de login admin -->
+    <div class="admin-login-modal" id="adminLoginModal">
+        <div class="admin-login-content">
+            <button class="close-btn" onclick="closeAdminLogin()">&times;</button>
+            <h3>🔑 Acceso Admin</h3>
+            <form id="adminLoginForm">
+                <div class="form-group">
+                    <label>Usuario:</label>
+                    <input type="text" id="adminUser" required>
+                </div>
+                <div class="form-group">
+                    <label>Contraseña:</label>
+                    <input type="password" id="adminPass" required>
+                </div>
+                <div class="admin-login-error" id="adminLoginError">
+                    Credenciales incorrectas. Intenta de nuevo.
+                </div>
+                <button type="submit" class="admin-login-btn">Entrar como Admin</button>
+            </form>
+        </div>
+    </div>
+
     <script>
         // Datos de ejemplo
         let products = [
@@ -762,19 +865,17 @@
         let whatsappNumber = '573203276886'; // Número actualizado
 
         function toggleAdminMode() {
-            isAdminMode = !isAdminMode;
-            const adminPanel = document.getElementById('adminPanel');
-            const body = document.body;
-            
-            if (isAdminMode) {
-                adminPanel.classList.add('active');
-                body.classList.add('admin-mode');
+            if (!isAdminMode) {
+                // Mostrar modal de login
+                document.getElementById('adminLoginModal').classList.add('active');
+                document.getElementById('adminUser').focus();
             } else {
-                adminPanel.classList.remove('active');
-                body.classList.remove('admin-mode');
+                // Salir del modo admin
+                isAdminMode = false;
+                document.getElementById('adminPanel').classList.remove('active');
+                document.body.classList.remove('admin-mode');
+                renderProducts();
             }
-            
-            renderProducts();
         }
 
         function filterProducts(category) {
@@ -1068,6 +1169,30 @@
         document.getElementById('cartModal').addEventListener('click', function(e) {
             if (e.target === this) {
                 closeCart();
+            }
+        });
+
+        function closeAdminLogin() {
+            document.getElementById('adminLoginModal').classList.remove('active');
+            document.getElementById('adminLoginError').style.display = 'none';
+            document.getElementById('adminLoginForm').reset();
+        }
+
+        // Manejo del formulario de login admin
+        document.getElementById('adminLoginForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const user = document.getElementById('adminUser').value.trim();
+            const pass = document.getElementById('adminPass').value.trim();
+            // Cambia estos valores si quieres otros datos de acceso
+            if (user === 'admin' && pass === '5550142') {
+                isAdminMode = true;
+                document.getElementById('adminPanel').classList.add('active');
+                document.body.classList.add('admin-mode');
+                document.getElementById('adminLoginModal').classList.remove('active');
+                document.getElementById('adminLoginError').style.display = 'none';
+                renderProducts();
+            } else {
+                document.getElementById('adminLoginError').style.display = 'block';
             }
         });
 
